@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор промптов для откликов</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-size: 0.95rem;
+        }
+
+        .form-group select {
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .account-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .account-info h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .account-info p {
+            color: #6c757d;
+            margin: 5px 0;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .result-area {
+            margin-top: 30px;
+        }
+
+        .result-area textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            resize: vertical;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #f8f9fa;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+            font-size: 0.9rem;
+            color: #6c757d;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 8px 15px;
+            border-radius: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .buttons {
+                justify-content: center;
+            }
+            
+            .btn {
+                flex: 1;
+                min-width: 120px;
+            }
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Генератор промптов</h1>
+            <p>Создаёт уникальные промпты для генерации откликов на фриланс проекты</p>
+        </div>
+        
+        <div class="content">
+            <form id="generatorForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="account">Выбери аккаунт</label>
+                        <select id="account" required>
+                            <option value="">-- Выберите аккаунт --</option>
+                            <option value="saveliissdd">@saveliissdd</option>
+                            <option value="KirillKapl">@KirillKapl</option>
+                            <option value="Pochemunetonutribi">@Pochemunetonutribi</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="accountInfo" class="account-info" style="display: none;">
+                    <h3>Параметры аккаунта</h3>
+                    <p id="accountDetails"></p>
+                </div>
+                
+                <div class="buttons">
+                    <button type="submit" class="btn btn-primary">🚀 Генерировать промпт</button>
+                    <button type="button" id="regenerate" class="btn btn-secondary" disabled>🔄 Другой стиль</button>
+                    <button type="button" id="copyBtn" class="btn btn-success" disabled>📋 Копировать</button>
+                </div>
+            </form>
+            
+            <div class="result-area">
+                <div class="stats" id="stats" style="display: none;">
+                    <div class="stat-item">
+                        <strong>Символов:</strong> <span id="charCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <strong>Структура:</strong> <span id="structureType">Базовая</span>
+                    </div>
+                    <div class="stat-item">
+                        <strong>Стиль:</strong> <span id="styleType">Стандартный</span>
+                    </div>
+                </div>
+                <textarea id="result" placeholder="Здесь появится сгенерированный промпт для ИИ..."></textarea>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // Конфигурация аккаунтов
+        const accounts = {
+            'saveliissdd': {
+                years: 4,
+                priceMultiplier: 1.75,
+                contact: '@saveliissdd',
+                projectsTotal: 15,
+                nicheProjects: 3,
+                marketPrice: 2500,
+                marketTime: 3
+            },
+            'KirillKapl': {
+                years: 5,
+                priceMultiplier: 2.0,
+                contact: '@KirillKapl',
+                projectsTotal: 20,
+                nicheProjects: 4,
+                marketPrice: 3000,
+                marketTime: 4
+            },
+            'Pochemunetonutribi': {
+                years: 6,
+                priceMultiplier: 2.25,
+                contact: '@Pochemunetonutribi',
+                projectsTotal: 30,
+                nicheProjects: 5,
+                marketPrice: 3500,
+                marketTime: 5
+            }
+        };
+
+        // Варианты структур промптов (на основе эталона)
+        const promptStructures = [
+            {
+                name: "Классическая структура",
+                blocks: [
+                    "Абзац 1 - Приветствие и опыт: укажи {years} лет разработки, ~{projectsTotal} проектов ({nicheProjects} в нужной нише). Добавь короткую эмпатичную фразу о боли заказчика.",
+                    "Абзац 2 - Диагностика: одно ключевое узкое место/риск (например, задержка при SIP или стабильность соединения).",
+                    "Абзац 3 - Решение: перечисли стек (Go ≥1.22, прямое SIP-подключение без Asterisk, Google STT/TTS, gorilla/mux, JSON-конфиги) + одну уникальную фишку (например, правка промпта \"на лету\" через админку, расширенные логи, симуляция звонка в браузере).",
+                    "Абзац 4 - Опыт/результаты: один кейс с реалистичными цифрами (например, снижение задержки на 30%, рост успешных диалогов на 18%).",
+                    "Абзац 5 - Условия: цена найди среднюю по рынку на такой заказ и умножь на {priceMultiplier} но не пиши об этом только конкретную цену, ценность — «{value}», срок тоже найди средний по рынку и умножь на 2 и тоже не говори что умножил.",
+                    "Абзац 6 - Контакт: укажи Telegram {contact}.",
+                    "Абзац 7 - Финал: короткое возражение или альтернативное мнение (например, «для MVP хватит простого решения, но если нужна масштабируемость — заложу её сразу»)."
+                ]
+            },
+            {
+                name: "Диагностика в начале",
+                blocks: [
+                    "Абзац 1 - Приветствие и диагностика: поздоровайся и сразу укажи главную проблему проекта (например, нестабильность SIP или задержки в соединении).",
+                    "Абзац 2 - Опыт: {years} лет разработки, ~{projectsTotal} проектов ({nicheProjects} в нужной нише). Добавь эмпатию о боли заказчика.",
+                    "Абзац 3 - Решение: перечисли стек (Go ≥1.22, прямое SIP-подключение без Asterisk, Google STT/TTS, gorilla/mux, JSON-конфиги) + уникальную фишку.",
+                    "Абзац 4 - Кейс: один пример с реалистичными цифрами из прошлого опыта.",
+                    "Абзац 5 - Условия: цена найди среднюю по рынку на такой заказ и умножь на {priceMultiplier} но не пиши об этом только конкретную цену, срок найди средний по рынку и умножь на 2, ценность «{value}».",
+                    "Абзац 6 - Контакт: укажи Telegram {contact}.",
+                    "Абзац 7 - Финал: короткое возражение или альтернативное мнение."
+                ]
+            },
+            {
+                name: "Решение в приоритете",
+                blocks: [
+                    "Абзац 1 - Приветствие и решение: поздоровайся и сразу предложи стек (Go ≥1.22, прямое SIP без Asterisk, Google STT/TTS, gorilla/mux, JSON) + уникальную фишку.",
+                    "Абзац 2 - Опыт: {years} лет разработки, ~{projectsTotal} проектов ({nicheProjects} в нужной нише).",
+                    "Абзац 3 - Диагностика + эмпатия: объясни главную проблему и покажи понимание боли клиента.",
+                    "Абзац 4 - Кейс: конкретный пример с цифрами из прошлого опыта.",
+                    "Абзац 5 - Условия: цена найди среднюю по рынку на такой заказ и умножь на {priceMultiplier} но не пиши об этом только конкретную цену, срок найди средний по рынку и умножь на 2, ценность «{value}».",
+                    "Абзац 6 - Контакт: укажи Telegram {contact}.",
+                    "Абзац 7 - Финал: короткое возражение или альтернативное мнение."
+                ]
+            },
+            {
+                name: "Кейс в начале",
+                blocks: [
+                    "Абзац 1 - Приветствие через кейс: поздоровайся и сразу расскажи конкретный пример из опыта с цифрами.",
+                    "Абзац 2 - Опыт: {years} лет разработки, ~{projectsTotal} проектов ({nicheProjects} в нужной нише).",
+                    "Абзац 3 - Диагностика: на основе кейса объясни типичную проблему таких проектов.",
+                    "Абзац 4 - Решение: стек (Go ≥1.22, прямое SIP без Asterisk, Google STT/TTS, gorilla/mux, JSON) + уникальная фишка.",
+                    "Абзац 5 - Эмпатия: покажи понимание боли заказчика.",
+                    "Абзац 6 - Условия: цена найди среднюю по рынку на такой заказ и умножь на {priceMultiplier} но не пиши об этом только конкретную цену, срок найди средний по рынку и умножь на 2, ценность «{value}».",
+                    "Абзац 7 - Контакт: укажи Telegram {contact}.",
+                    "Абзац 8 - Финал: короткое возражение или альтернативное мнение."
+                ]
+            },
+            {
+                name: "Компактная структура",
+                blocks: [
+                    "Абзац 1 - Приветствие и опыт: укажи {years} лет разработки, ~{projectsTotal} проектов ({nicheProjects} в нужной нише).",
+                    "Абзац 2 - Диагностика + эмпатия: в одном абзаце опиши проблему и покажи понимание боли клиента.",
+                    "Абзац 3 - Решение: стек (Go ≥1.22, SIP, Google STT/TTS, gorilla/mux, JSON) + фишка.",
+                    "Абзац 4 - Кейс + условия: пример с цифрами + цена найди среднюю по рынку на такой заказ и умножь на {priceMultiplier} но не пиши об этом только конкретную цену + срок найди средний по рынку и умножь на 2 + ценность «{value}».",
+                    "Абзац 5 - Контакт: укажи Telegram {contact}.",
+                    "Абзац 6 - Финал: короткое возражение или альтернативное мнение."
+                ]
+            },
+            {
+                name: "Детальная структура",
+                blocks: [
+                    "Абзац 1 - Приветствие: короткое приветствие.",
+                    "Абзац 2 - Опыт: {years} лет разработки, ~{projectsTotal} проектов ({nicheProjects} в нужной нише).",
+                    "Абзац 3 - Эмпатия: отдельно покажи понимание боли заказчика.",
+                    "Абзац 4 - Диагностика: отдельно опиши главную проблему.",
+                    "Абзац 5 - Решение: стек (Go ≥1.22, прямое SIP без Asterisk, Google STT/TTS, gorilla/mux, JSON).",
+                    "Абзац 6 - Уникальная фишка: отдельно опиши одну интересную возможность.",
+                    "Абзац 7 - Кейс: пример с цифрами.",
+                    "Абзац 8 - Условия: цена найди среднюю по рынку на такой заказ и умножь на {priceMultiplier} но не пиши об этом только конкретную цену + срок найди средний по рынку и умножь на 2 + ценность «{value}».",
+                    "Абзац 9 - Контакт: укажи Telegram {contact}.",
+                    "Абзац 10 - Финал: короткое возражение или альтернативное мнение."
+                ]
+            }
+        ];
+
+        // Варианты стилей (расширенные)
+        const styles = [
+            "живой язык, немного программистского сленга, разные длины предложений, максимум конкретики",
+            "деловой тон, технические термины, короткие чёткие фразы, без лишних слов",
+            "разговорный стиль, простые слова, дружелюбный тон, иногда жаргон, эмоциональность",
+            "уверенный тон, много технических деталей, профессиональная лексика, экспертность",
+            "casual стиль, современный сленг, лёгкость общения, неформальность",
+            "сдержанный профессионализм, фокус на результате, минимум эмоций",
+            "энергичный стиль, активные фразы, мотивирующий тон, динамичность", 
+            "опытный ментор, мудрые советы, спокойная уверенность, наставничество",
+            "молодой прогрессивный подход, современные решения, инновационность",
+            "практичный реалист, конкретные решения, прагматичность, без воды",
+            "креативный подход, нестандартные сравнения, образные выражения",
+            "аналитический склад, структурированность, логичность изложения",
+            "дипломатичный тон, вежливость, учёт интересов клиента",
+            "прямолинейный стиль, честность, открытость, без обиняков"
+        ];
+
+        // Варианты вступлений
+        const greetingVariants = [
+            "поздоровайся стандартно",
+            "начни без приветствия, сразу к делу", 
+            "неформальное приветствие",
+            "вежливое обращение",
+            "дружеское приветствие",
+            "деловое приветствие"
+        ];
+
+        // Варианты подачи опыта
+        const experienceVariants = [
+            "укажи опыт и проекты цифрами",
+            "расскажи об опыте через достижения",
+            "опыт через примеры технологий",
+            "опыт с акцентом на нишу",
+            "краткое упоминание опыта",
+            "детальное описание экспертизы"
+        ];
+
+        // Варианты эмпатии
+        const empathyVariants = [
+            "короткая фраза о понимании боли",
+            "детальное описание проблемы клиента", 
+            "эмпатия через собственный опыт",
+            "техническое объяснение почему это больно",
+            "эмоциональное сочувствие",
+            "бизнес-обоснование важности проблемы"
+        ];
+
+        // Варианты диагностики
+        const diagnosisVariants = [
+            "одно ключевое узкое место",
+            "несколько потенциальных рисков",
+            "техническая диагностика",
+            "бизнес-риски",
+            "диагностика через примеры",
+            "превентивная диагностика"
+        ];
+
+        // Варианты решений
+        const solutionVariants = [
+            "стек списком через запятую",
+            "стек с обоснованием каждой технологии",
+            "стек с акцентом на производительность", 
+            "стек с фокусом на надёжность",
+            "минималистичный стек",
+            "full-stack решение"
+        ];
+
+        // Варианты фишек
+        const featureVariants = [
+            "админка для настроек",
+            "аналитика и мониторинг",
+            "продвинутое логирование",
+            "симуляция и тестирование",
+            "автоматизация процессов",
+            "интеграционные возможности"
+        ];
+
+        // Варианты кейсов
+        const caseVariants = [
+            "конкретные цифры улучшений",
+            "кейс с описанием проблемы и решения",
+            "сравнение до/после",
+            "влияние на бизнес-метрики",
+            "технические достижения",
+            "пользовательский опыт"
+        ];
+
+        // Варианты финалов
+        const finalVariants = [
+            "возражение про MVP vs масштабируемость",
+            "альтернативное мнение о технологиях",
+            "совет по архитектуре",
+            "предложение дополнительных опций",
+            "честное мнение о сложности",
+            "рекомендация по подходу"
+        ];
+
+        // Варианты ценностей
+        const values = [
+            "рабочий прототип, готовый к показу инвесторам и первым тестам",
+            "полнофункциональный MVP для beta-тестирования",
+            "production-ready решение с документацией",
+            "масштабируемая архитектура под будущий рост",
+            "enterprise-уровень с мониторингом и метриками",
+            "готовый к продакшену продукт с CI/CD",
+            "MVP с возможностью быстрой итерации",
+            "стабильное решение для immediate deployment",
+            "архитектура под высокие нагрузки",
+            "готовый продукт для демонстрации stakeholders"
+        ];
+
+        // Простой seeded RNG
+        class SeededRandom {
+            constructor(seed) {
+                this.seed = this.hashCode(seed.toString());
+            }
+            
+            hashCode(str) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    const char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return Math.abs(hash);
+            }
+            
+            random() {
+                this.seed = (this.seed * 9301 + 49297) % 233280;
+                return this.seed / 233280;
+            }
+            
+            choice(arr) {
+                return arr[Math.floor(this.random() * arr.length)];
+            }
+            
+            range(min, max) {
+                return Math.floor(this.random() * (max - min + 1)) + min;
+            }
+        }
+
+        // Элементы DOM
+        const accountSelect = document.getElementById('account');
+        const accountInfo = document.getElementById('accountInfo');
+        const accountDetails = document.getElementById('accountDetails');
+        const form = document.getElementById('generatorForm');
+        const regenerateBtn = document.getElementById('regenerate');
+        const copyBtn = document.getElementById('copyBtn');
+        const resultTextarea = document.getElementById('result');
+        const stats = document.getElementById('stats');
+
+        let currentSeed = '';
+        let currentParams = {};
+
+        // Обработка выбора аккаунта
+        accountSelect.addEventListener('change', function() {
+            const selectedAccount = this.value;
+            if (selectedAccount && accounts[selectedAccount]) {
+                const account = accounts[selectedAccount];
+                const finalPrice = Math.ceil(account.marketPrice * account.priceMultiplier);
+                const finalTime = account.marketTime * 2;
+                
+                accountInfo.style.display = 'block';
+                accountDetails.innerHTML = `
+                    <strong>Опыт:</strong> ${account.years} лет<br>
+                    <strong>Всего проектов:</strong> ${account.projectsTotal}, в нише: ${account.nicheProjects}<br>
+                    <strong>Итоговая цена:</strong> ${finalPrice.toLocaleString('ru-RU')} USD (рыночная ${account.marketPrice} × ${account.priceMultiplier})<br>
+                    <strong>Итоговый срок:</strong> ${finalTime} нед (рыночный ${account.marketTime} × 2)<br>
+                    <strong>Контакт:</strong> ${account.contact}
+                `;
+            } else {
+                accountInfo.style.display = 'none';
+            }
+        });
+
+        // Генерация промпта
+        function generatePrompt(seed, params) {
+            const rng = new SeededRandom(seed);
+            const account = accounts[params.account];
+            
+            // Выбираем случайные варианты для каждого блока
+            const structure = rng.choice(promptStructures);
+            const style = rng.choice(styles);
+            const value = rng.choice(values);
+            const sentenceCount = rng.range(5, 7);
+            
+            const greeting = rng.choice(greetingVariants);
+            const experienceStyle = rng.choice(experienceVariants);
+            const empathyStyle = rng.choice(empathyVariants);
+            const diagnosisStyle = rng.choice(diagnosisVariants);
+            const solutionStyle = rng.choice(solutionVariants);
+            const featureStyle = rng.choice(featureVariants);
+            const caseStyle = rng.choice(caseVariants);
+            const finalStyle = rng.choice(finalVariants);
+            
+            // Собираем промпт
+            let prompt = `Сгенерируй отклик на проект в стиле опытного разработчика (${account.years} лет опыта). Текст должен быть коротким (${sentenceCount}–${sentenceCount + 1} предложений), конкретным, без воды и маркетинговых клише.
+
+Структура отклика:
+`;
+            
+            // Добавляем блоки структуры с заменами
+            structure.blocks.forEach((block, index) => {
+                const filledBlock = block
+                    .replace(/\{years\}/g, account.years)
+                    .replace(/\{projectsTotal\}/g, account.projectsTotal)
+                    .replace(/\{nicheProjects\}/g, account.nicheProjects)
+                    .replace(/\{priceMultiplier\}/g, account.priceMultiplier)
+                    .replace(/\{contact\}/g, account.contact)
+                    .replace(/\{value\}/g, value)
+                    .replace(/\{greeting\}/g, greeting)
+                    .replace(/\{experience_style\}/g, experienceStyle)
+                    .replace(/\{empathy_style\}/g, empathyStyle)
+                    .replace(/\{diagnosis_style\}/g, diagnosisStyle)
+                    .replace(/\{solution_style\}/g, solutionStyle)
+                    .replace(/\{feature_style\}/g, featureStyle)
+                    .replace(/\{case_style\}/g, caseStyle)
+                    .replace(/\{final_style\}/g, finalStyle);
+                
+                prompt += `${filledBlock}\n`;
+            });
+            
+            prompt += `\nСтиль: ${style}
+            
+ВАЖНО: Каждый блок должен звучать по-разному! Используй разную лексику, длину предложений, порядок информации. Избегай шаблонных фраз типа "понимаю боль", "ключевой риск", "стоимость разработки". Вместо этого используй синонимы и перефразировки.`;
+            
+            // Обновляем статистику
+            updateStats(prompt, structure.name, style);
+            
+            return prompt;
+        }
+
+        function updateStats(text, structureType, styleType) {
+            document.getElementById('charCount').textContent = text.length;
+            document.getElementById('structureType').textContent = structureType;
+            document.getElementById('styleType').textContent = styleType.split(',')[0] + '...';
+            stats.style.display = 'flex';
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Обработчик формы
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const selectedAccount = accountSelect.value;
+            if (!selectedAccount) {
+                showToast('Выберите аккаунт!');
+                return;
+            }
+            
+            currentParams = { account: selectedAccount };
+            currentSeed = selectedAccount + '_' + Date.now();
+            
+            const prompt = generatePrompt(currentSeed, currentParams);
+            resultTextarea.value = prompt;
+            
+            regenerateBtn.disabled = false;
+            copyBtn.disabled = false;
+        });
+
+        // Перегенерация
+        regenerateBtn.addEventListener('click', function() {
+            currentSeed = currentParams.account + '_' + Date.now() + '_regen';
+            const prompt = generatePrompt(currentSeed, currentParams);
+            resultTextarea.value = prompt;
+        });
+
+        // Копирование
+        copyBtn.addEventListener('click', function() {
+            resultTextarea.select();
+            document.execCommand('copy');
+            showToast('Промпт скопирован в буфер обмена!');
+        });
+    </script>
+</body>
+</html>
